@@ -20,7 +20,9 @@ public class RestExceptionHandler {
     @ExceptionHandler
     @ResponseStatus
     public RestResp runtimeExceptionHandler(Exception e){
-        return RestResp.fail(e.getCause().getMessage());
-//        return RestResp.fail("500统一处理异常");
+        if (e instanceof RuntimeException) {
+            return RestResp.fail(e.getCause().getMessage());
+        }
+        return RestResp.fail("500统一处理异常");
     }
 }
