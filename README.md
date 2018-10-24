@@ -1,4 +1,4 @@
  
-normal包:计算器限流
+normal包:普通IP请求计算器限流
 
-ratelimiter包：令牌桶算法限流
+ratelimiter包：google guava 令牌桶算法限流和计数器限流
