@@ -4,6 +4,8 @@ import org.aspectj.lang.JoinPoint;
 import org.aspectj.lang.Signature;
 import org.aspectj.lang.reflect.MethodSignature;
 
+import javax.servlet.http.HttpServletRequest;
+
 /**
  * key生成工厂
  *
@@ -29,6 +31,22 @@ public class KeyFactory {
             sb.append(")");
         }
         return sb.toString();
+/*
+        上面的key会重复，使用下面的时候controller 方法的参数中要加 HttpServletRequest才能获取到request
+        Object[] args = point.getArgs();
+        HttpServletRequest request = null;
+        for (int i = 0; i < args.length; i++) {
+            if (args[i] instanceof HttpServletRequest) {
+                request = (HttpServletRequest) args[i];
+                break;
+            }
+        }
+        if (request == null) {
+            return null;
+        }
+        String ip = IpUtils.getRealIP(request);
+        String url = request.getRequestURL().toString();
+        String key = "req_limit_".concat(url).concat(ip);*/
     }
 
     private static void appendType(StringBuilder sb, Class<?> type) {
