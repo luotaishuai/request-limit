@@ -1,4 +1,4 @@
-package com.example.limit.config;
+package com.example.limit.normal.config;
 
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.concurrent.BasicThreadFactory;
@@ -19,7 +19,7 @@ import java.util.concurrent.TimeUnit;
 @Aspect
 @Component
 public class RequestLimitContract {
-    private Map<String, RequestData> redisTemplate = null;
+    private Map<String, com.example.limit.normal.config.RequestData> redisTemplate = null;
 
     @PostConstruct
     public void listeningMap() {
@@ -30,8 +30,8 @@ public class RequestLimitContract {
             public void run() {
                 try {
                     if (redisTemplate != null && redisTemplate.size() > 0) {
-                        for (Map.Entry<String, RequestData> m : redisTemplate.entrySet()) {
-                            RequestData value = m.getValue();
+                        for (Map.Entry<String, com.example.limit.normal.config.RequestData> m : redisTemplate.entrySet()) {
+                            com.example.limit.normal.config.RequestData value = m.getValue();
                             if (System.currentTimeMillis() - value.getTime() >= value.getLimit()) {
                                 redisTemplate.remove(m.getKey());
                             }
@@ -47,7 +47,7 @@ public class RequestLimitContract {
 
         @Before("(within(@org.springframework.stereotype.Controller *) || within(@org.springframework.web.bind.annotation.RestController *))&& @annotation(limit)")
 //    @Before("@annotation(limit)")
-    public void requestLimit(final JoinPoint joinPoint, RequestLimit limit) throws RequestLimitException {
+    public void requestLimit(final JoinPoint joinPoint, com.example.limit.normal.config.RequestLimit limit) throws RequestLimitException {
         try {
             Object[] args = joinPoint.getArgs();
             HttpServletRequest request = null;
@@ -64,11 +64,11 @@ public class RequestLimitContract {
             String url = request.getRequestURL().toString();
             String key = "req_limit_".concat(url).concat(ip);
             if (redisTemplate.get(key) == null || redisTemplate.get(key).getCount() == 0) {
-                redisTemplate.put(key, new RequestData(1, System.currentTimeMillis(), limit.time()));
+                redisTemplate.put(key, new com.example.limit.normal.config.RequestData(1, System.currentTimeMillis(), limit.time()));
             } else {
                 redisTemplate.get(key).incr();
             }
-            RequestData requestData = redisTemplate.get(key);
+            com.example.limit.normal.config.RequestData requestData = redisTemplate.get(key);
             if (requestData.getCount() > limit.count()) {
                 log.error("用户IP[{}]访问地址[{}]超过了限定的次数[{}]", ip, url, limit.count());
                 long time = (requestData.getLimit() - (System.currentTimeMillis() - requestData.getTime())) / 1000;

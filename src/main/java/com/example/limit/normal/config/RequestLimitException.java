@@ -1,4 +1,4 @@
-package com.example.limit.config;
+package com.example.limit.normal.config;
 
 
 public class RequestLimitException extends Exception {

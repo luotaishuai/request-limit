@@ -1,11 +1,9 @@
 package com.example.limit.exception;
 
 import com.example.limit.common.RestResp;
-import com.example.limit.config.RequestLimitException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
 
-import java.lang.reflect.UndeclaredThrowableException;
 
 /**
  * 全局异常
