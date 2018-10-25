@@ -50,7 +50,7 @@ public class UrlInterceptor implements HandlerInterceptor {
                 List<ViolationIp> newList = violationIpList.stream().filter(s -> s.getCreateTime() != max1).collect(Collectors.toList());
                 long max2 = newList.stream().mapToLong(s -> s.getCreateTime()).max().getAsLong();
                 // 两次违规操作间隔小于20s
-                if ((max2 - max1) / 1000 < 20) {
+                if ((max1 - max2) / 1000 < 20) {
                     violationIpList.stream().forEach(block -> block.setEnable(1));
                     violationIpRepo.save(violationIpList);
                     printResponse(response, Const.GOD_WORD);
