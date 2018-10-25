@@ -1,5 +1,9 @@
 package com.example.limit.normal.config;
 
+import com.example.limit.common.Const;
+import com.example.limit.common.RedisService;
+import com.example.limit.entity.ViolationIp;
+import com.example.limit.repo.ViolationIpRepo;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.concurrent.BasicThreadFactory;
 import org.aspectj.lang.JoinPoint;
@@ -8,6 +12,7 @@ import org.aspectj.lang.annotation.Before;
 import org.springframework.stereotype.Component;
 
 import javax.annotation.PostConstruct;
+import javax.annotation.Resource;
 import javax.servlet.http.HttpServletRequest;
 import java.util.HashMap;
 import java.util.Map;
@@ -19,7 +24,13 @@ import java.util.concurrent.TimeUnit;
 @Aspect
 @Component
 public class RequestLimitContract {
-    private Map<String, com.example.limit.normal.config.RequestData> redisTemplate = null;
+
+    @Resource
+    private RedisService redisService;
+    @Resource
+    private ViolationIpRepo violationIpRepo;
+
+    private Map<String, RequestData> redisTemplate = null;
 
     @PostConstruct
     public void listeningMap() {
@@ -30,8 +41,8 @@ public class RequestLimitContract {
             public void run() {
                 try {
                     if (redisTemplate != null && redisTemplate.size() > 0) {
-                        for (Map.Entry<String, com.example.limit.normal.config.RequestData> m : redisTemplate.entrySet()) {
-                            com.example.limit.normal.config.RequestData value = m.getValue();
+                        for (Map.Entry<String, RequestData> m : redisTemplate.entrySet()) {
+                            RequestData value = m.getValue();
                             if (System.currentTimeMillis() - value.getTime() >= value.getLimit()) {
                                 redisTemplate.remove(m.getKey());
                             }
@@ -45,9 +56,9 @@ public class RequestLimitContract {
         }, 1, 1, TimeUnit.MILLISECONDS);
     }
 
-        @Before("(within(@org.springframework.stereotype.Controller *) || within(@org.springframework.web.bind.annotation.RestController *))&& @annotation(limit)")
+    @Before("(within(@org.springframework.stereotype.Controller *) || within(@org.springframework.web.bind.annotation.RestController *))&& @annotation(limit)")
 //    @Before("@annotation(limit)")
-    public void requestLimit(final JoinPoint joinPoint, com.example.limit.normal.config.RequestLimit limit) throws RequestLimitException {
+    public void requestLimit(final JoinPoint joinPoint, RequestLimit limit) throws RequestLimitException {
         try {
             Object[] args = joinPoint.getArgs();
             HttpServletRequest request = null;
@@ -64,15 +75,31 @@ public class RequestLimitContract {
             String url = request.getRequestURL().toString();
             String key = "req_limit_".concat(url).concat(ip);
             if (redisTemplate.get(key) == null || redisTemplate.get(key).getCount() == 0) {
-                redisTemplate.put(key, new com.example.limit.normal.config.RequestData(1, System.currentTimeMillis(), limit.time()));
+                redisTemplate.put(key, new RequestData(1, System.currentTimeMillis(), limit.time()));
             } else {
                 redisTemplate.get(key).incr();
             }
-            com.example.limit.normal.config.RequestData requestData = redisTemplate.get(key);
+            RequestData requestData = redisTemplate.get(key);
+
             if (requestData.getCount() > limit.count()) {
-                log.error("用户IP[{}]访问地址[{}]超过了限定的次数[{}]", ip, url, limit.count());
+                log.warn("用户IP[{}]访问地址[{}]超过了规定时间访问限定的次数[{}]", ip, url, limit.count());
                 long time = (requestData.getLimit() - (System.currentTimeMillis() - requestData.getTime())) / 1000;
                 time = time < 1 ? 1 : time;
+
+                String count = (String) redisService.get(ip);
+                if (count != null) {
+                    if (Integer.parseInt(count) < 20){
+                        redisService.set(ip, String.valueOf(Integer.parseInt(count) + 1));
+                    } else {
+                        redisService.set(ip, Const.ANGEL_WORD);
+
+                        ViolationIp violationIp = new ViolationIp(ip, System.currentTimeMillis(), 0);
+                        violationIpRepo.save(violationIp);
+                    }
+                } else {
+                    redisService.set(ip, "1");
+                }
+
                 throw new RequestLimitException(time);
             }
         } catch (RequestLimitException e) {
